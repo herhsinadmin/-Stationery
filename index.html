@@ -156,14 +156,16 @@
     </div>
 
     <script>
-        // 注意：請確保此網址為 Google Apps Script 部署後的 Web App 網址
         const scriptUrl = "https://script.google.com/macros/s/AKfycby3cAjL3dGSwwGhgiIrJX_oMmu_FgLNi_wns7UMYKeOw_PalqqcvdeEa5ICtpyN6zzl/exec"; 
 
         const form = document.getElementById('requestForm');
         const statusMsg = document.getElementById('statusMessage');
         const recordList = document.getElementById('recordList');
 
-        // 提交表單：使用 POST
+        /**
+         * 提交資料使用 POST。
+         * 關鍵：為了避免 CORS 預檢失敗，不主動設置 headers，並使用 no-cors 模式。
+         */
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             if(!scriptUrl) return showStatus('尚未連接資料庫 URL！', 'amber');
@@ -173,13 +175,15 @@
             const data = Object.fromEntries(formData.entries());
 
             try {
-                // 使用 no-cors 模式發送 POST 請求
+                // 將資料序列化為 JSON
+                const payload = JSON.stringify(data);
+
+                // 發送 POST 請求
                 await fetch(scriptUrl, {
                     method: 'POST',
-                    mode: 'no-cors', 
+                    mode: 'no-cors', // 使用 no-cors 解決 POST 的 Preflight 阻擋問題
                     cache: 'no-cache',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+                    body: payload 
                 });
                 
                 showStatus('成功啦！申請已經存入森林樹洞 🍯', 'green');
@@ -191,76 +195,85 @@
             }
         });
 
-        // 讀取資料：使用 GET
+        /**
+         * 獲取資料使用 GET。
+         * 關鍵：redirect: 'follow' 處理 GAS 的重定向行為。
+         */
         async function fetchData() {
             if(!scriptUrl) return;
+            
             try {
-                // 核心變更：嘗試切換 fetch 策略以解決 Failed to fetch
-                // 在某些環境下，直接使用 cors 可能因為 Google 轉址導致 Failed to fetch
+                // 清理標題以防止觸發 preflight 檢查
                 const response = await fetch(scriptUrl, {
                     method: 'GET',
-                    // 如果 cors 持續失敗，可以嘗試暫時移除 mode: 'cors' 或確認後端部署版本
                     mode: 'cors', 
-                    redirect: 'follow',
+                    redirect: 'follow', 
                     cache: 'no-store'
                 });
 
                 if (!response.ok) {
-                    throw new Error(`網路回應不正常: ${response.status}`);
+                    throw new Error(`HTTP 錯誤: ${response.status}`);
                 }
                 
                 const result = await response.json();
-                recordList.innerHTML = '';
-                
-                if(!result || result.length === 0) {
-                    recordList.innerHTML = '<p class="text-center text-gray-300">目前還沒有申請紀錄喔</p>';
-                    return;
-                }
+                renderRecords(result);
 
-                result.slice(-4).reverse().forEach(row => {
-                    const item = document.createElement('div');
-                    item.className = "bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center";
-                    item.innerHTML = `
-                        <div>
-                            <span class="font-bold text-gray-700">${row.name || '神秘人'}</span>
-                            <span class="text-xs text-gray-400 ml-2">${row.department || ''}</span>
-                        </div>
-                        <div class="text-sm">
-                            <span class="text-green-700 font-medium">${row.item || '-'}</span>
-                            <span class="ml-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">x${row.quantity || 1}</span>
+            } catch (err) {
+                console.error('Fetch Error Detail:', err);
+                
+                // 顯示詳細調試指引
+                if (err instanceof TypeError) {
+                    recordList.innerHTML = `
+                        <div class="text-center p-4 bg-amber-50 rounded-xl border border-amber-200">
+                            <p class="text-amber-700 text-sm font-bold">⚠️ 連線受阻 (CORS/Redirect)</p>
+                            <p class="text-[11px] text-amber-600 mt-2 text-left bg-white p-2 rounded-lg leading-relaxed">
+                                <b>請檢查 GAS 部署設定：</b><br>
+                                1. 點擊「部署」>「管理部署」>「編輯」。<br>
+                                2. 「誰可以存取」必須設為<b>「所有人 (Anyone)」</b>。<br>
+                                3. 確保 Code.gs 的 doGet 最後回傳了：<br>
+                                <code class="text-[9px] bg-gray-100 p-1">setMimeType(ContentService.MimeType.JSON)</code>
+                            </p>
                         </div>
                     `;
-                    recordList.appendChild(item);
-                });
-            } catch (err) {
-                console.error('Fetch Error:', err);
-                recordList.innerHTML = `
-                    <div class="text-center p-4 bg-red-50 rounded-xl border border-red-100">
-                        <p class="text-red-500 text-sm font-bold">目前連線受阻 🦉</p>
-                        <p class="text-xs text-red-400 mt-2">這通常是瀏覽器 CORS 安全機制導致的。</p>
-                        <p class="text-xs text-gray-500 mt-2 italic font-normal">
-                            請務必檢查後端 Code.gs：<br>
-                            1. 確認有 doGet(e) 函數。<br>
-                            2. 必須 return ContentService...setMimeType(JSON)。<br>
-                            3. 點擊「部署」>「管理部署」>「編輯」> 選擇「新版本」。<br>
-                            4. 存取權限必須設定為「所有人」。
-                        </p>
+                } else {
+                    recordList.innerHTML = `<p class="text-center text-red-400 text-sm font-bold">目前暫時無法讀取森林資料...🦉</p>`;
+                }
+            }
+        }
+
+        function renderRecords(result) {
+            recordList.innerHTML = '';
+            if(!result || !Array.isArray(result) || result.length === 0) {
+                recordList.innerHTML = '<p class="text-center text-gray-300">目前還沒有申請紀錄喔</p>';
+                return;
+            }
+
+            result.slice(-4).reverse().forEach(row => {
+                const item = document.createElement('div');
+                item.className = "bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center";
+                item.innerHTML = `
+                    <div>
+                        <span class="font-bold text-gray-700">${row.name || '冒險者'}</span>
+                        <span class="text-xs text-gray-400 ml-2">${row.department || ''}</span>
+                    </div>
+                    <div class="text-sm">
+                        <span class="text-green-700 font-medium">${row.item || '-'}</span>
+                        <span class="ml-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">x${row.quantity || 1}</span>
                     </div>
                 `;
-            }
+                recordList.appendChild(item);
+            });
         }
 
         function showStatus(msg, color) {
             statusMsg.textContent = msg;
             statusMsg.classList.remove('hidden', 'text-blue-600', 'text-green-600', 'text-red-600', 'text-amber-600', 'border-blue-200', 'border-green-200', 'border-red-200', 'border-amber-200');
-            
             const colorMap = {
                 'blue': 'text-blue-600 border-blue-200 bg-blue-50',
                 'green': 'text-green-600 border-green-200 bg-green-50',
                 'red': 'text-red-600 border-red-200 bg-red-50',
                 'amber': 'text-amber-600 border-amber-200 bg-amber-50'
             };
-            
             statusMsg.className = `mt-6 text-center text-sm font-bold p-3 rounded-2xl ${colorMap[color]}`;
             statusMsg.classList.remove('hidden');
         }
