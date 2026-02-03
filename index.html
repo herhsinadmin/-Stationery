@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* 一般網頁樣式 */
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #fdfaf1;
@@ -95,7 +94,7 @@
             .print-title {
                 text-align: center;
                 font-size: 24px;
-                font-bold: true;
+                font-weight: bold;
                 margin-bottom: 20px;
                 text-decoration: underline;
             }
@@ -115,11 +114,11 @@
 </head>
 <body class="p-6 md:p-12 flex items-center justify-center">
     
-    <!-- 隱藏的列印區塊 (僅列印時顯示) -->
+    <!-- 隱藏的列印區塊 -->
     <div id="printArea">
         <div class="print-title">辦公物資領用申請單</div>
         <table class="print-table">
-            <tr><th width="30%">申請日期</th><td id="p-date"></td></tr>
+            <tr><th width="30%">申請時間</th><td id="p-date"></td></tr>
             <tr><th>申請人</th><td id="p-name"></td></tr>
             <tr><th>所屬部門</th><td id="p-dept"></td></tr>
             <tr><th>申請項目</th><td id="p-item"></td></tr>
@@ -250,22 +249,19 @@
                 renderRecords(result);
             } catch (err) {
                 console.error('Fetch Error Detail:', err);
-                if (err instanceof TypeError) {
-                    recordList.innerHTML = `<div class="text-center p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-600">⚠️ 連線受阻，請檢查 GAS 權限設定。</div>`;
-                } else {
-                    recordList.innerHTML = `<p class="text-center text-red-400 text-sm font-bold">無法讀取資料...🦉</p>`;
-                }
+                recordList.innerHTML = `<p class="text-center text-red-400 text-sm font-bold">無法讀取資料...🦉</p>`;
             }
         }
 
         // 執行列印功能
-        function printOrder(data) {
-            document.getElementById('p-date').innerText = data.timestamp ? new Date(data.timestamp).toLocaleDateString() : new Date().toLocaleDateString();
-            document.getElementById('p-name').innerText = data.name || '---';
-            document.getElementById('p-dept').innerText = data.department || '---';
-            document.getElementById('p-item').innerText = data.item || '---';
-            document.getElementById('p-qty').innerText = data.quantity || '1';
-            document.getElementById('p-note').innerText = data.note || '無';
+        function printOrder(row) {
+            // 直接顯示後端傳回的台灣時間字串
+            document.getElementById('p-date').innerText = row.時間戳記 || row.timestamp || '---';
+            document.getElementById('p-name').innerText = row.name || '---';
+            document.getElementById('p-dept').innerText = row.department || '---';
+            document.getElementById('p-item').innerText = row.item || '---';
+            document.getElementById('p-qty').innerText = row.quantity || '1';
+            document.getElementById('p-note').innerText = row.note || '無';
             
             window.print();
         }
@@ -281,21 +277,25 @@
                 const item = document.createElement('div');
                 item.className = "bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center";
                 
-                // 建立內容與列印按鈕
+                // 取得顯示的時間：如果是 GAS 物件則會是 "時間戳記" 鍵名
+                const displayTime = row.時間戳記 || row.timestamp || '';
+
                 item.innerHTML = `
                     <div class="flex-1">
-                        <span class="font-bold text-gray-700">${row.name || '冒險者'}</span>
-                        <span class="text-[10px] text-gray-400 bg-white px-2 py-0.5 rounded border ml-2">${row.department || ''}</span>
+                        <div class="flex items-center justify-between pr-4">
+                            <span class="font-bold text-gray-700">${row.name || '冒險者'}</span>
+                            <span class="text-[9px] text-gray-400">${displayTime}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-400 bg-white px-2 py-0.5 rounded border mt-1 inline-block">${row.department || ''}</span>
                         <div class="text-sm text-green-700 mt-1">${row.item || '-'} x${row.quantity || 1}</div>
                     </div>
                     <button class="print-btn p-2 hover:bg-green-100 rounded-full transition-colors group" title="列印申請單">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
                     </button>
                 `;
                 
-                // 綁定點擊事件
                 item.querySelector('.print-btn').onclick = () => printOrder(row);
                 recordList.appendChild(item);
             });
