@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        /* 一般網頁樣式 */
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #fdfaf1;
@@ -22,9 +23,7 @@
             z-index: -1;
         }
 
-        h1, h2 {
-            color: #5d7a66;
-        }
+        h1, h2 { color: #5d7a66; }
 
         .doodle-card {
             background-color: #ffffff;
@@ -48,20 +47,10 @@
             background-color: #ee5253;
         }
 
-        .btn-doodle:active {
-            transform: translate(2px, 2px);
-            box-shadow: 0px 0px 0px #333;
-        }
-
         input, select, textarea {
             border: 2px solid #e0e0e0 !important;
             border-radius: 15px !important;
             padding: 12px !important;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            border-color: #5d7a66 !important;
-            background-color: #f8faf9 !important;
         }
 
         .stamp {
@@ -75,14 +64,76 @@
             border-radius: 50px;
             font-weight: bold;
             border: 3px solid white;
-            box-shadow: 3px 3px 0px rgba(0,0,0,0.1);
             font-size: 0.8rem;
+        }
+
+        /* 列印專用樣式 */
+        #printArea { display: none; }
+
+        @media print {
+            body * { visibility: hidden; background: none !important; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea {
+                display: block;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 20px;
+                color: black;
+            }
+            .print-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            .print-table th, .print-table td {
+                border: 1px solid black;
+                padding: 12px;
+                text-align: left;
+            }
+            .print-title {
+                text-align: center;
+                font-size: 24px;
+                font-bold: true;
+                margin-bottom: 20px;
+                text-decoration: underline;
+            }
+            .print-footer {
+                margin-top: 50px;
+                display: flex;
+                justify-content: space-between;
+            }
+            .sig-line {
+                border-bottom: 1px solid black;
+                display: inline-block;
+                width: 150px;
+            }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
 <body class="p-6 md:p-12 flex items-center justify-center">
     
-    <div class="max-w-xl w-full doodle-card p-8 md:p-10">
+    <!-- 隱藏的列印區塊 (僅列印時顯示) -->
+    <div id="printArea">
+        <div class="print-title">辦公物資領用申請單</div>
+        <table class="print-table">
+            <tr><th width="30%">申請日期</th><td id="p-date"></td></tr>
+            <tr><th>申請人</th><td id="p-name"></td></tr>
+            <tr><th>所屬部門</th><td id="p-dept"></td></tr>
+            <tr><th>申請項目</th><td id="p-item"></td></tr>
+            <tr><th>數量</th><td id="p-qty"></td></tr>
+            <tr><th>備註</th><td id="p-note"></td></tr>
+        </table>
+        <div class="print-footer">
+            <div>申請人簽章：<span class="sig-line"></span></div>
+            <div>主管核示：<span class="sig-line"></span></div>
+        </div>
+    </div>
+
+    <!-- 主網頁內容 -->
+    <div class="max-w-xl w-full doodle-card p-8 md:p-10 no-print">
         <div class="stamp">OFFICE CAMP!</div>
         
         <div class="text-center mb-8">
@@ -91,17 +142,16 @@
             <p class="text-gray-500 font-medium">填寫申請，開啟你的辦公室小冒險！</p>
         </div>
         
-        <!-- 申請表單 -->
         <form id="requestForm" class="space-y-5">
             <div>
                 <label class="block text-sm font-bold text-gray-700 ml-1 mb-1">🌲 冒險者姓名</label>
-                <input type="text" id="name" name="name" placeholder="你的名字" required class="block w-full text-gray-700 shadow-sm">
+                <input type="text" id="name" name="name" placeholder="你的名字" required class="block w-full">
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 ml-1 mb-1">🚩 所屬小隊</label>
-                    <select id="department" name="department" required class="block w-full text-gray-700 shadow-sm">
+                    <select id="department" name="department" required class="block w-full">
                         <option value="">請選擇部門...</option>
                         <option value="業務">業務部門</option>
                         <option value="設計">設計部門</option>
@@ -112,7 +162,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 ml-1 mb-1">🎒 補給品項</label>
-                    <select id="item" name="item" required class="block w-full text-gray-700 shadow-sm">
+                    <select id="item" name="item" required class="block w-full">
                         <option value="">選擇文具...</option>
                         <option value="原子筆">原子筆</option>
                         <option value="筆記本">筆記本</option>
@@ -125,12 +175,12 @@
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 ml-1 mb-1">🔢 補給數量</label>
-                <input type="number" id="quantity" name="quantity" min="1" value="1" required class="block w-full text-gray-700 shadow-sm">
+                <input type="number" id="quantity" name="quantity" min="1" value="1" required class="block w-full">
             </div>
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 ml-1 mb-1">📝 冒險筆記 (備註)</label>
-                <textarea id="note" name="note" rows="2" placeholder="還有什麼想說的嗎？" class="block w-full text-gray-700 shadow-sm"></textarea>
+                <textarea id="note" name="note" rows="2" placeholder="還有什麼想說的嗎？" class="block w-full"></textarea>
             </div>
 
             <button type="submit" id="submitBtn" class="w-full btn-doodle font-bold py-4 rounded-2xl text-lg tracking-widest uppercase">
@@ -138,7 +188,6 @@
             </button>
         </form>
 
-        <!-- 狀態提示 -->
         <div id="statusMessage" class="mt-6 text-center text-sm font-bold p-3 rounded-2xl hidden border-2 border-dashed"></div>
         
         <div class="mt-10 pt-8 border-t-2 border-dashed border-gray-200">
@@ -162,10 +211,6 @@
         const statusMsg = document.getElementById('statusMessage');
         const recordList = document.getElementById('recordList');
 
-        /**
-         * 提交資料使用 POST。
-         * 關鍵：為了避免 CORS 預檢失敗，不主動設置 headers，並使用 no-cors 模式。
-         */
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             if(!scriptUrl) return showStatus('尚未連接資料庫 URL！', 'amber');
@@ -175,15 +220,11 @@
             const data = Object.fromEntries(formData.entries());
 
             try {
-                // 將資料序列化為 JSON
-                const payload = JSON.stringify(data);
-
-                // 發送 POST 請求
                 await fetch(scriptUrl, {
                     method: 'POST',
-                    mode: 'no-cors', // 使用 no-cors 解決 POST 的 Preflight 阻擋問題
+                    mode: 'no-cors', 
                     cache: 'no-cache',
-                    body: payload 
+                    body: JSON.stringify(data) 
                 });
                 
                 showStatus('成功啦！申請已經存入森林樹洞 🍯', 'green');
@@ -195,50 +236,38 @@
             }
         });
 
-        /**
-         * 獲取資料使用 GET。
-         * 關鍵：redirect: 'follow' 處理 GAS 的重定向行為。
-         */
         async function fetchData() {
             if(!scriptUrl) return;
-            
             try {
-                // 清理標題以防止觸發 preflight 檢查
                 const response = await fetch(scriptUrl, {
                     method: 'GET',
                     mode: 'cors', 
                     redirect: 'follow', 
                     cache: 'no-store'
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP 錯誤: ${response.status}`);
-                }
-                
+                if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
                 const result = await response.json();
                 renderRecords(result);
-
             } catch (err) {
                 console.error('Fetch Error Detail:', err);
-                
-                // 顯示詳細調試指引
                 if (err instanceof TypeError) {
-                    recordList.innerHTML = `
-                        <div class="text-center p-4 bg-amber-50 rounded-xl border border-amber-200">
-                            <p class="text-amber-700 text-sm font-bold">⚠️ 連線受阻 (CORS/Redirect)</p>
-                            <p class="text-[11px] text-amber-600 mt-2 text-left bg-white p-2 rounded-lg leading-relaxed">
-                                <b>請檢查 GAS 部署設定：</b><br>
-                                1. 點擊「部署」>「管理部署」>「編輯」。<br>
-                                2. 「誰可以存取」必須設為<b>「所有人 (Anyone)」</b>。<br>
-                                3. 確保 Code.gs 的 doGet 最後回傳了：<br>
-                                <code class="text-[9px] bg-gray-100 p-1">setMimeType(ContentService.MimeType.JSON)</code>
-                            </p>
-                        </div>
-                    `;
+                    recordList.innerHTML = `<div class="text-center p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-600">⚠️ 連線受阻，請檢查 GAS 權限設定。</div>`;
                 } else {
-                    recordList.innerHTML = `<p class="text-center text-red-400 text-sm font-bold">目前暫時無法讀取森林資料...🦉</p>`;
+                    recordList.innerHTML = `<p class="text-center text-red-400 text-sm font-bold">無法讀取資料...🦉</p>`;
                 }
             }
+        }
+
+        // 執行列印功能
+        function printOrder(data) {
+            document.getElementById('p-date').innerText = data.timestamp ? new Date(data.timestamp).toLocaleDateString() : new Date().toLocaleDateString();
+            document.getElementById('p-name').innerText = data.name || '---';
+            document.getElementById('p-dept').innerText = data.department || '---';
+            document.getElementById('p-item').innerText = data.item || '---';
+            document.getElementById('p-qty').innerText = data.quantity || '1';
+            document.getElementById('p-note').innerText = data.note || '無';
+            
+            window.print();
         }
 
         function renderRecords(result) {
@@ -248,26 +277,32 @@
                 return;
             }
 
-            result.slice(-4).reverse().forEach(row => {
+            result.slice(-5).reverse().forEach(row => {
                 const item = document.createElement('div');
                 item.className = "bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center";
+                
+                // 建立內容與列印按鈕
                 item.innerHTML = `
-                    <div>
+                    <div class="flex-1">
                         <span class="font-bold text-gray-700">${row.name || '冒險者'}</span>
-                        <span class="text-xs text-gray-400 ml-2">${row.department || ''}</span>
+                        <span class="text-[10px] text-gray-400 bg-white px-2 py-0.5 rounded border ml-2">${row.department || ''}</span>
+                        <div class="text-sm text-green-700 mt-1">${row.item || '-'} x${row.quantity || 1}</div>
                     </div>
-                    <div class="text-sm">
-                        <span class="text-green-700 font-medium">${row.item || '-'}</span>
-                        <span class="ml-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">x${row.quantity || 1}</span>
-                    </div>
+                    <button class="print-btn p-2 hover:bg-green-100 rounded-full transition-colors group" title="列印申請單">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                    </button>
                 `;
+                
+                // 綁定點擊事件
+                item.querySelector('.print-btn').onclick = () => printOrder(row);
                 recordList.appendChild(item);
             });
         }
 
         function showStatus(msg, color) {
             statusMsg.textContent = msg;
-            statusMsg.classList.remove('hidden', 'text-blue-600', 'text-green-600', 'text-red-600', 'text-amber-600', 'border-blue-200', 'border-green-200', 'border-red-200', 'border-amber-200');
             const colorMap = {
                 'blue': 'text-blue-600 border-blue-200 bg-blue-50',
                 'green': 'text-green-600 border-green-200 bg-green-50',
