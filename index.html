@@ -5,21 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>手繪森林風 | 辦公室文具申請</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
-            /* 使用可愛的手繪森林塗鴉背景 */
             background-color: #fdfaf1;
-            background-image: url('https://www.transparenttextures.com/patterns/pinstripe-light.png'), 
-                              url('https://img.freepik.com/free-vector/cute-hand-drawn-camping-doodle-set_53876-118123.jpg?t=st=1715671234~exp=1715674834~hmac=6b7c5e...&w=1380'); /* 注意：此為示意，實際使用圖案重複排列 */
-            background-blend-mode: multiply;
-            background-size: 600px;
-            background-repeat: repeat;
+            background-image: url('https://www.transparenttextures.com/patterns/pinstripe-light.png'); 
             min-height: 100vh;
         }
 
-        /* 為了確保塗鴉背景不過於干擾，增加一個柔和遮罩 */
         body::before {
             content: "";
             position: fixed;
@@ -40,7 +34,6 @@
             box-shadow: 10px 10px 0px #d4e2d7;
         }
 
-        /* 裝飾性的小塗鴉感按鈕 */
         .btn-doodle {
             background-color: #ff9f43;
             border: 3px solid #333;
@@ -157,20 +150,20 @@
             </div>
             
             <div class="space-y-3" id="recordList">
-                <!-- 資料會以可愛列表形式呈現 -->
                 <p class="text-center text-gray-400 text-sm">正在從森林搬運資料中...</p>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 請將你的 Google Apps Script Web App URL 貼在下方引號內 ---
+        // 注意：請確保此網址為 Google Apps Script 部署後的 Web App 網址
         const scriptUrl = "https://script.google.com/macros/s/AKfycby3cAjL3dGSwwGhgiIrJX_oMmu_FgLNi_wns7UMYKeOw_PalqqcvdeEa5ICtpyN6zzl/exec"; 
 
         const form = document.getElementById('requestForm');
         const statusMsg = document.getElementById('statusMessage');
         const recordList = document.getElementById('recordList');
 
+        // 提交表單：使用 POST
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             if(!scriptUrl) return showStatus('尚未連接資料庫 URL！', 'amber');
@@ -180,28 +173,50 @@
             const data = Object.fromEntries(formData.entries());
 
             try {
+                // 使用 no-cors 模式發送 POST 請求
                 await fetch(scriptUrl, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    mode: 'no-cors', 
                     cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
                 
                 showStatus('成功啦！申請已經存入森林樹洞 🍯', 'green');
                 form.reset();
-                setTimeout(fetchData, 1500);
+                setTimeout(fetchData, 2000); 
             } catch (err) {
+                console.error('Submit Error:', err);
                 showStatus('哎呀，小精靈迷路了，請再試一次 🦉', 'red');
             }
         });
 
+        // 讀取資料：使用 GET
         async function fetchData() {
             if(!scriptUrl) return;
             try {
-                const response = await fetch(scriptUrl);
+                // 核心變更：嘗試切換 fetch 策略以解決 Failed to fetch
+                // 在某些環境下，直接使用 cors 可能因為 Google 轉址導致 Failed to fetch
+                const response = await fetch(scriptUrl, {
+                    method: 'GET',
+                    // 如果 cors 持續失敗，可以嘗試暫時移除 mode: 'cors' 或確認後端部署版本
+                    mode: 'cors', 
+                    redirect: 'follow',
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`網路回應不正常: ${response.status}`);
+                }
+                
                 const result = await response.json();
                 recordList.innerHTML = '';
                 
+                if(!result || result.length === 0) {
+                    recordList.innerHTML = '<p class="text-center text-gray-300">目前還沒有申請紀錄喔</p>';
+                    return;
+                }
+
                 result.slice(-4).reverse().forEach(row => {
                     const item = document.createElement('div');
                     item.className = "bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center";
@@ -217,9 +232,21 @@
                     `;
                     recordList.appendChild(item);
                 });
-                if(result.length === 0) recordList.innerHTML = '<p class="text-center text-gray-300">目前還沒有申請紀錄喔</p>';
             } catch (err) {
-                console.error('讀取紀錄失敗', err);
+                console.error('Fetch Error:', err);
+                recordList.innerHTML = `
+                    <div class="text-center p-4 bg-red-50 rounded-xl border border-red-100">
+                        <p class="text-red-500 text-sm font-bold">目前連線受阻 🦉</p>
+                        <p class="text-xs text-red-400 mt-2">這通常是瀏覽器 CORS 安全機制導致的。</p>
+                        <p class="text-xs text-gray-500 mt-2 italic font-normal">
+                            請務必檢查後端 Code.gs：<br>
+                            1. 確認有 doGet(e) 函數。<br>
+                            2. 必須 return ContentService...setMimeType(JSON)。<br>
+                            3. 點擊「部署」>「管理部署」>「編輯」> 選擇「新版本」。<br>
+                            4. 存取權限必須設定為「所有人」。
+                        </p>
+                    </div>
+                `;
             }
         }
 
@@ -235,6 +262,7 @@
             };
             
             statusMsg.className = `mt-6 text-center text-sm font-bold p-3 rounded-2xl ${colorMap[color]}`;
+            statusMsg.classList.remove('hidden');
         }
 
         document.getElementById('refreshBtn').onclick = fetchData;
